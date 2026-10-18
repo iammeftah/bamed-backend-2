@@ -1,0 +1,46 @@
+2. A mannequin wearing the products
+
+Yes, it’s possible. These are the options, from realistic to ambitious:
+
+Option	How it works	Quality	Effort	Verdict
+A. Layered flat-lay on a silhouette	Each product photo is cut out (transparent PNG) and positioned on a mannequin shape: top on the torso, trousers on the legs, shoes at the feet	Decent, stylised, consistent	Medium, but needs cutout images	Best fit for you
+B. AI virtual try-on (Fashn, Kolors, IDM-VTON, etc.)	You send a model photo and a garment photo, and an API returns the person wearing it	Realistic	Paid API, latency of 5-20 s per render, cost per image, and the render must be cached	Good as a premium feature later
+C. 3D mannequin (Three.js)	Garments modelled as 3D meshes	Impressive	Very high, since every product needs a 3D asset	No, unrealistic for a shop with a daily-changing catalogue
+D. Manual photo shoot of real looks	You photograph outfits on a model	Best	Time and money	The classic answer, but not “smart”
+
+What I’d do: option A, with a hybrid.
+
+The catch with A is that your product photos are mostly photographs with backgrounds, not cutouts. There are two ways to deal with that:
+
+Automatic background removal at upload time. The backend already processes uploads in ImageStorage (resize, WebP). Adding a cutout step there is possible, for example with the remove.bg API or a self-hosted model like rembg. The admin uploads a normal photo, and the backend also stores a transparent version. Layering then looks clean.
+Admin marks one photo per colour as “cutout / flat-lay” (a photo on a plain background). Simpler, but it puts more work on the admin.
+
+Either way, the layering is front-end only. Garments overlap realistically (jacket over top, trousers under top) with fixed per-slot positions and scales. It won’t look like a photograph of a real person, but it reads clearly as “this is the outfit” and it stays tidy.
+
+My advice on sequencing:
+
+Now: keep the current board (clean tiles, no mannequin). It works today with no new requirements.
+Next: add background removal at upload, then add a “Voir sur mannequin” toggle on each look that renders the layered silhouette.
+Later, if the shop grows: add AI try-on as a premium option, cached per look so you pay once per combination.
+
+I wouldn’t start with a mannequin until the cutouts exist. Without clean cutouts it will look worse than the current board.
+
+3. Should the admin adjust outfits when adding products?
+
+Not at product creation. Reasons:
+
+A product is one thing. An outfit is a relationship between several products. Forcing the admin to define the relationships while he’s entering stock slows down the most frequent task.
+Outfits get stale when stock changes. A combination defined on day 1 can break when an item sells out.
+The generated looks already cover most cases, so the admin only needs to intervene for the exceptions.
+
+What I’d do instead: a separate, optional “Looks” page in the back office. The admin can:
+
+Create a curated look: pick 2-5 existing products and a colour for each, give it a name (“Casual vendredi”), and optionally upload one photo of the real outfit.
+Pin it: pinned looks show first in the storefront. Generated ones fill the rest.
+Hide a generated look he doesn’t like.
+
+This gives you the best of both: automatic suggestions with no work, and manual control when he wants it. It’s a few new pieces:
+
+Backend: looks and look_items tables, a controller, and a public GET /looks.
+Admin page: /admin/dashboard/looks.
+Storefront: curated looks are merged ahead of generated ones in OutfitBuilder.
