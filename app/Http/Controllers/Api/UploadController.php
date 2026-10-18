@@ -8,19 +8,35 @@ use Illuminate\Http\Request;
 
 class UploadController extends Controller
 {
-    /** POST /admin/uploads (multipart "file") -> { url }  (always a webp) */
+    /**
+     * POST /admin/uploads (multipart "file") -> { url }
+     * JPG, PNG and WebP are converted to webp. SVG is sanitized and kept as svg.
+     */
     public function store(Request $request, ImageStorage $images)
     {
         $request->validate([
-            'file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+            'file' => ['required', 'file', 'max:10240'],
         ], [
             'file.required' => 'Aucun fichier reçu.',
-            'file.mimes' => 'Image invalide (JPG, PNG ou WebP).',
             'file.max' => 'Fichier trop volumineux (10 Mo max).',
         ]);
 
-        return response()->json([
-            'url' => $images->storeWebp($request->file('file')),
-        ], 201);
+        $file = $request->file('file');
+        $isSvg = strtolower($file->getClientOriginalExtension()) === 'svg';
+
+        if ($isSvg) {
+            // The content is fully parsed and rebuilt by storeSvg, the extension alone is never trusted
+            $url = $images->storeSvg($file);
+        } else {
+            $request->validate([
+                'file' => ['mimes:jpg,jpeg,png,webp'],
+            ], [
+                'file.mimes' => 'Image invalide (JPG, PNG, WebP ou SVG).',
+            ]);
+
+            $url = $images->storeWebp($file);
+        }
+
+        return response()->json(['url' => $url], 201);
     }
 }
